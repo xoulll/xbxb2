@@ -4,6 +4,14 @@ set -e
 # Disable conflicting MPMs safely (no-op if already disabled)
 a2dismod mpm_event mpm_worker 2>/dev/null || true
 
+# Ensure any leftover mpm load files are removed from mods-enabled (robustness)
+for m in mpm_event mpm_worker; do
+  rm -f /etc/apache2/mods-enabled/${m}.load /etc/apache2/mods-enabled/${m}.conf || true
+done
+
+# Ensure prefork MPM is enabled
+a2enmod mpm_prefork 2>/dev/null || true
+
 port=${PORT:-80}
 
 # Only modify ports.conf if it exists
