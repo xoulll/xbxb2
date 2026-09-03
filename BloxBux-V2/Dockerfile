@@ -1,5 +1,7 @@
 FROM php:8.2-apache
 
+ENV APACHE_MODS_DISABLE="mpm_event mpm_worker"
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libcurl4-openssl-dev \
     && docker-php-ext-install mysqli curl \
@@ -12,4 +14,4 @@ COPY . .
 
 EXPOSE 80
 
-CMD ["sh", "-c", "port=${PORT:-80}; sed -ri \"s/Listen [0-9]+/Listen ${port}/\" /etc/apache2/ports.conf; sed -ri \"s/<VirtualHost \\*:[0-9]+>/<VirtualHost *:${port}>/\" /etc/apache2/sites-available/*.conf; apache2ctl start && tail -f /dev/null"]
+CMD ["sh", "-c", "port=${PORT:-80}; sed -ri \"s/Listen [0-9]+/Listen ${port}/\" /etc/apache2/ports.conf; sed -ri \"s/<VirtualHost \\*:[0-9]+>/<VirtualHost *:${port}>/\" /etc/apache2/sites-availabl[...]"]
