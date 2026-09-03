@@ -14,4 +14,4 @@ COPY . .
 
 EXPOSE 80
 
-CMD ["sh", "-c", "port=${PORT:-80}; sed -ri \"s/Listen [0-9]+/Listen ${port}/\" /etc/apache2/ports.conf; sed -ri \"s/<VirtualHost \\*:[0-9]+>/<VirtualHost *:${port}>/\" /etc/apache2/sites-availabl[...]"]
+CMD ["apache2-foreground"]
