@@ -27,8 +27,8 @@ include_once "php/main.php"
             $inventory = getInventory($session["user_id"], false);
             foreach ($inventory as $item) :
         ?>
-                <div id="item<?php echo $item["inventory_id"];?>" class='selitemcontainer' style="padding:10px;display:flex;flex-direction:column;align-items:center;gap:10px;background-color:#3e3d42;border-radius:0.25em;width:100px;">
-                    <img src="<?php echo $item["item_image"];?>" height="80px" width="80px" loading="lazy">
+                <div id="item<?php echo $item["inventory_id"]; ?>" class='selitemcontainer' style="padding:10px;display:flex;flex-direction:column;align-items:center;gap:10px;background-color:rgba(255,255,255,0.03);border-radius:8px;">
+                    <img src="<?php echo $item["item_image"]; ?>" height="80px" width="80px" loading="lazy">
                     <div style="font-size:20px;font-weight:bold;font-style:italic;"><?php echo $item["display_name"]; ?></div>
                     <div><?php echo $item["item_value"] ?> Value</div>
                     <button class="selectionbtn btn-secondary" onclick="addItem(<?php echo $item['inventory_id'].','.$item['item_value'];?>)">Select</button>
@@ -38,9 +38,21 @@ include_once "php/main.php"
         endif; 
         ?>
     </div>
-    <div style="display:flex;justify-content:space-between;width:calc(100% - 60px);">
+    <div style="display:flex;justify-content:space-between;width:calc(100% - 60px);align-items:center;margin-top:12px;">
         <h2 id="valdiv">Value: 0</h2>
-        <button id='okbtn' class="btn-primary" onclick="createMatchside()">Create Match</button>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <div id="side-select" style="display:flex;gap:8px;align-items:center;">
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                    <img id="side0" src="./img/gem.png" width="80" height="80" class="side-btn" onclick="selectSide(0)" style="cursor:pointer;border-radius:8px;">
+                    <div style="text-align:center;color:#9ecfff;">Red</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                    <img id="side1" src="./img/dog.png" width="80" height="80" class="side-btn" onclick="selectSide(1)" style="cursor:pointer;border-radius:8px;">
+                    <div style="text-align:center;color:#9ecfff;">Blue</div>
+                </div>
+            </div>
+            <button id='okbtn' class="btn-primary" onclick="createMatchPost()">Post Game</button>
+        </div>
     </div>
 </div>
 <script>
@@ -194,6 +206,9 @@ include_once "php/main.php"
         <?php if ($session) : ?>
             socket.emit("authenticate", "<?php echo getCookie(); ?>")
         <?php endif; ?>
+        // show chat indicator when connected
+        $('#chatindicator').show();
+        $('#chatcount').show();
     })
 
     socket.on("count users", function(data) {
@@ -248,7 +263,7 @@ include_once "php/main.php"
             });
         }
     })
-    
+
     socket.on("update giveaway joined",function(data) {
         if (typeof gamesavail !== 'undefined' && gamesavail) {
             console.log("update giveaway joined",data)
@@ -257,7 +272,7 @@ include_once "php/main.php"
             $("#giveaway"+giveaway_id+" .numplayers").text(numplayers+" Joined")
         }
     })
-    
+
     socket.on("giveaway ended",function(data) {
         if (typeof gamesavail !== 'undefined' && gamesavail) {
             console.log("giveaway ended",data)
@@ -269,7 +284,7 @@ include_once "php/main.php"
             },30000);
         }
     })
-    
+
     socket.on("giveaway win",function(item) {
         Swal.fire({
             title: "You Won a Giveaway!",
@@ -279,7 +294,7 @@ include_once "php/main.php"
             window.location.reload();
         })
     })
-    
+
     socket.on("item refund",function(item) {
         Swal.fire({
             title: "No one joined your Giveaway!",
@@ -289,7 +304,7 @@ include_once "php/main.php"
             window.location.reload();
         })
     })
-    
+
     socket.on("update game",function(data) {
         if (typeof gamesavail !== 'undefined' && gamesavail) {
             console.log("update game",data)
@@ -313,12 +328,10 @@ include_once "php/main.php"
             });
         }
     })
-    
+
     socket.on("game played",function(data) {
         console.log("game played",data["game_id"]);
         currentUser = <?php echo $session?$session["user_id"]:"false";?>;
-        /*$("#game"+data["game_id"]+" .coin").addClass(`flip${data['winner_side']?'blue':'red'}`)
-        $("#game"+data["game_id"]+" .coin").removeClass(`flip${data['winner_side']?'red':'blue'}`)*/
         if (currentUser && (currentUser == data["starter_id"] || currentUser == data["player_id"])) {
             Swal.close();
             Swal.fire({
@@ -395,6 +408,141 @@ include_once "php/main.php"
         $("#popupblur").removeClass("hidden");
         $("#" + id).removeClass("hidden");
     }
+</script>
+
+<script>
+    // selection and posting logic
+    var value = 0;
+    var minval = 0;
+    var maxval = 0;
+    var items = [];
+    var publicmatches = true;
+    var gamesavail = true;
+    var selectedSide = null; // 0 or 1
+    var postingMode = null; // 'create' or 'join' or null
+
+    function updateOkBtn() {
+        var okbtn = $("#okbtn");
+        // check value constraints
+        var valueOk = ((value >= minval || minval == 0) && (value <= maxval || maxval == 0));
+        if (postingMode === 'create') {
+            if (valueOk && selectedSide !== null) {
+                okbtn.prop('disabled', false);
+            } else {
+                okbtn.prop('disabled', true);
+            }
+        } else {
+            // join or default
+            if (valueOk) okbtn.prop('disabled', false); else okbtn.prop('disabled', true);
+        }
+    }
+
+    function selectSide(side) {
+        selectedSide = side;
+        // visual highlight
+        $('#side0').css('outline','');
+        $('#side1').css('outline','');
+        $('#side' + side).css('outline','3px solid rgba(158,207,255,0.6)');
+        updateOkBtn();
+    }
+
+    function addItem(invid, val) {
+        if (items.includes(invid)) {
+            items.splice(items.indexOf(invid), 1)
+            value = value - val
+            $("#item" + invid + " .selectionbtn").each(function() {
+                $(this).removeClass("btn-primary")
+                $(this).addClass("btn-secondary")
+                $(this).text("Select")
+            })
+        } else {
+            if (items.length >= <?php echo $maxGameItems ?>) {
+                Swal.fire("Error", "You can bet maximum of <?php echo $maxGameItems ?> items!", "error")
+                return;
+            }
+            items.push(invid)
+            value = value + val
+            $("#item" + invid + " .selectionbtn").each(function() {
+                $(this).removeClass("btn-secondary")
+                $(this).addClass("btn-primary")
+                $(this).text("Unselect")
+            })
+        }
+        $("#valdiv").text("Value: " + value)
+        updateOkBtn();
+    }
+
+    function createMatch() {
+        value = 0
+        minval = 10
+        maxval = 0
+        items = []
+        selectedSide = null
+        postingMode = 'create'
+        togglePopup('selitem')
+        $("#valheader").text("(Value must be greater than 10)")
+        $("#valdiv").text("Value: 0")
+        $("#okbtn").attr("onclick", "createMatchPost()")
+        $("#okbtn").text("Post Game")
+        $("#okbtn").attr("disabled", true)
+        $(".selectionbtn").each(function() {
+            $(this).removeClass("btn-primary")
+            $(this).addClass("btn-secondary")
+            $(this).text("Select")
+        })
+        // clear side selection highlight
+        $('#side0').css('outline','');
+        $('#side1').css('outline','');
+    }
+
+    function joinMatch(game_id, val) {
+        value = 0
+        minval = val - 10
+        if (minval < 10) {
+            minval = 10;
+        }
+        maxval = val + 10
+        items = []
+        selectedSide = null
+        postingMode = 'join'
+        togglePopup('selitem')
+        $("#valheader").text("(Value must be between " + minval + " and " + maxval + ")")
+        $("#valdiv").text("Value: 0")
+        $("#okbtn").attr("onclick", "joinMatchconf(" + game_id + ")")
+        $("#okbtn").text("Join Match")
+        $("#okbtn").attr("disabled", true)
+        $(".selectionbtn").each(function() {
+            $(this).removeClass("btn-primary")
+            $(this).addClass("btn-secondary")
+            $(this).text("Select")
+        })
+        $('#side0').css('outline','');
+        $('#side1').css('outline','');
+    }
+
+    function createMatchPost() {
+        if (selectedSide === null) {
+            Swal.fire('Error', 'Please select a side before posting.', 'error');
+            return;
+        }
+        createMatchOK(selectedSide, items);
+    }
+
+    function joinMatchconf(game_id) {
+        togglePopup('selitem')
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You are about to join this game!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, join it!'
+        }).then((result) => {
+            if (result.value) {
+                joinMatchOK(game_id, items)
+            }
+        })
+    }
+
 </script>
 </body>
 
