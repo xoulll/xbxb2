@@ -3,11 +3,13 @@ session_start();
 //Disable Including the File
 if (get_included_files()[0] != __FILE__) {return;}
 
-
 include_once "main.php";
 include_once "game_handler.php";
 include_once "session_handler.php";
 include_once "roblox_handler.php";
+
+// Always return JSON from this endpoint
+header('Content-Type: application/json');
 
 if (!$session) {
     jsonError("You are not Logged In!");
@@ -15,6 +17,15 @@ if (!$session) {
 if (!isset($_POST["type"])) {
     jsonError("400 Bad Request");
 }
+
+// Helper to accept both item_id and item_ids keys (client may send either)
+function parseItemIdsFromRequest()
+{
+    if (isset($_POST['item_ids'])) return json_decode($_POST['item_ids'], true);
+    if (isset($_POST['item_id'])) return json_decode($_POST['item_id'], true);
+    return null;
+}
+
 if ($_POST["type"] == "cancel") {
     if (!isset($_POST["game_id"])) {
         jsonError("400 Bad Request");
@@ -32,33 +43,47 @@ if ($_POST["type"] == "cancel") {
     $resp = deleteGame($_POST["game_id"]);
     jsonError($resp[0]?false:$resp[1]);
 } elseif ($_POST["type"] == "create") {
-    if (!isset($_POST["item_id"]) or !isset($_POST["side"])) {
+    // Accept either item_id (legacy) or item_ids (preferred)
+    $itemIds = parseItemIdsFromRequest();
+    if ($itemIds === null) {
         jsonError("400 Bad Request");
     }
-    $itemIds = json_decode($_POST["item_id"], true);
-    if (!$itemIds) {
+    if (!is_array($itemIds)) {
+        jsonError("400 Bad Request");
+    }
+    if (!isset($_POST["side"])) {
         jsonError("400 Bad Request");
     }
     $side = $_POST["side"];
-    if ($side != 0 and $side != 1) {
+    if ($side !== "0" && $side !== "1" && $side !== 0 && $side !== 1) {
         jsonError("400 Bad Request");
     }
+    // normalize to int 0/1
+    $side = intval($side);
+
     if (count($itemIds) <= 0) {
         jsonError("You need to select some items");
     }
-    $gameId = createGame($session["user_id"],$side, $itemIds);
+
+    // createGame should perform all checks (ownership, value, locking items)
+    $gameId = createGame($session["user_id"], $side, $itemIds);
     if (!$gameId[0]) {
         jsonError($gameId[1]);
     }
-    jsonError(false);
+    // Success: return created game id
+    echo json_encode(["success" => true, "game_id" => $gameId[1]]);
+    exit();
 } elseif ($_POST["type"] == "play") {
-    if (!isset($_POST["item_id"]) or !isset($_POST["game_id"])) {
+    // Accept both names
+    $itemIds = parseItemIdsFromRequest();
+    if ($itemIds === null) {
         jsonError("400 Bad Request");
     }
-    $itemIds = json_decode($_POST["item_ids"], true);
-    if (!$itemIds) {
+    if (!is_array($itemIds)) {
         jsonError("400 Bad Request");
-        exit;
+    }
+    if (!isset($_POST["game_id"])) {
+        jsonError("400 Bad Request");
     }
     $gameInfo = getGameData($_POST["game_id"]);
     if (!$gameInfo) {
@@ -67,14 +92,17 @@ if ($_POST["type"] == "cancel") {
     if ($gameInfo["starter_id"] == $session["user_id"]) {
         jsonError("You are the host of this game!");
     }
-    if (!$itemIds or count($itemIds) <= 0) {
+    if (!$itemIds || count($itemIds) <= 0) {
         jsonError("You need to select some items");
     }
-    $gameId = playGame($_POST["game_id"],$session["user_id"], $itemIds);
-    if (!$gameId[0]) {
-        jsonError($gameId[1]);
+    // playGame should perform all checks and atomically resolve the game
+    $playResult = playGame($_POST["game_id"], $session["user_id"], $itemIds);
+    if (!$playResult[0]) {
+        jsonError($playResult[1]);
     }
-    jsonError(false,$gameId[1]);
+    // playResult[1] might contain additional data like winner info
+    echo json_encode(["success" => true, "data" => $playResult[1]]);
+    exit();
 } elseif ($_POST["type"] == "gethtml") {
     if (!isset($_POST["game_id"])) {
         exit();
@@ -83,7 +111,7 @@ if ($_POST["type"] == "cancel") {
     if (!$match) {
         exit();
     } ?>
-    <div id='game<?php echo $match["game_id"];?>' class="<?php echo $session?($match["starter_id"] == $session["user_id"] or $match["player_id"] == $session["user_id"])?"mymatch":"publicmatch":"publicmatch"; ?> row" style="justify-content:space-between;">
+    <div id='game<?php echo $match["game_id"];?>' class="<?php echo $session?($match["starter_id"] == $session["user_id"] or $match["player_id"] == $session["user_id"])?"mymatch":"publicmatch":"publicmatch"; ?>" style="justify-content:space-between;">
             <div style="display:flex;flex-direction:column;gap:10px;align-items:center;width:calc(100% - 100px);">
                 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;width:100%;">
                     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -93,7 +121,7 @@ if ($_POST["type"] == "cancel") {
                         <?php
                         foreach (json_decode($match["starter_items"], true) as $item) :
                         ?>
-                            <img src="<?php echo getItemInfo($item["item_id"])["item_image"] ?>" width="32px" height="32px">
+                            <img src="<?php echo getItemInfo($item["item_id"])["item_image"]; ?>" width="32px" height="32px">
                         <?php endforeach; ?>
                     </div>
                     <?php if ($match["end_date"]) : ?> <div style="font-size:24px;">Value: <?php echo $match["starter_value"]; ?></div> <?php endif; ?>
@@ -105,13 +133,13 @@ if ($_POST["type"] == "cancel") {
                             <img class="userthumb" src="<?php echo getUserThumbnail($match["player_id"]); ?>" width="32px" height="32px">
                             <div style="font-size:24px;"><?php echo getName($match["player_id"]); ?></div>
                             <?php
-                            $player_items = json_decode($match["player_items"],true);
+                            $player_items = json_decode($match["player_items"], true);
                             if (!$player_items) {
                                 $player_items = [];
                             }
                             foreach ($player_items as $item) :
                             ?>
-                                <img src="<?php echo getItemInfo($item["item_id"])["item_image"] ?>" width="32px" height="32px">
+                                <img src="<?php echo getItemInfo($item["item_id"])["item_image"]; ?>" width="32px" height="32px">
                             <?php endforeach; ?>
                     </div>
                     <div style="font-size:24px;">Value: <?php echo $match["player_value"]; ?></div>
@@ -127,23 +155,6 @@ if ($_POST["type"] == "cancel") {
             </div>
         </div>
     <?php endif; ?>
-</div>
-<div style="display:flex;flex-direction:column;text-align:center;padding-right:10px;">
-    <?php if (!$match["end_date"]) : ?>
-        <h2>Value <br><?php echo $match["starter_value"]; ?></h2>
-        <div style="color:cadetblue">(<?php echo $match["starter_value"] - 10; ?> - <?php echo $match["starter_value"] + 10; ?>)</div>
-    <?php else : ?>
-        <div class="coin <?php echo $match["winner_side"] == 0 ? "red":"blue"; ?> flip<?php echo $match["winner_side"] == 0 ? "red":"blue"; ?>">
-            <div class='blue'>
-                <img src="./img/dog.png">
-            </div>
-            <div class='red'>
-                <img src="./img/gem.png">
-            </div>
-        </div>
-        <img style="border-radius:50%;" class="hidden" src="<?php echo $match["winner_side"] == 0 ? "./img/gem.png" : "./img/dog.png"; ?>" width="80px" height="80px">
-    <?php endif; ?>
-</div>
 </div>
     <?php
 }
