@@ -1,0 +1,72 @@
+/* Xflips theme - blue/black modern styles
+   Places: BloxBux-V2 pages (included from layout/head.php)
+   Keeps styles minimal and safe; intended to complement existing css/style.css
+*/
+:root{
+  --bg-0: #040710;
+  --bg-1: #071428;
+  --card-bg: rgba(255,255,255,0.03);
+  --accent-1: #0ea5e9; /* cyan */
+  --accent-2: #1e3a8a; /* deep blue */
+  --muted: #9ecfff;
+  --text: #dbeeff;
+}
+
+body{
+  background: linear-gradient(180deg,var(--bg-0) 0%, var(--bg-1) 100%);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+.header, header{
+  background: linear-gradient(90deg, rgba(11,18,32,0.6), rgba(10,25,45,0.6));
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.logo img{ max-height:40px; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.6)); }
+
+.main, .widthcontainer, .section{
+  background: transparent;
+}
+
+/* Cards */
+.selitemcontainer, .match-item, .publicmatch, .mymatch{
+  background: var(--card-bg);
+  border: 1px solid rgba(158,207,255,0.04);
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.selitemcontainer img{ border-radius:6px; transition: transform .12s ease, box-shadow .12s ease; }
+.selitemcontainer:hover img{ transform: translateY(-4px); box-shadow: 0 12px 30px rgba(2,6,23,0.6); }
+
+.selectionbtn.btn-primary{ background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); border: none; color: #fff; }
+.selectionbtn.btn-secondary{ background: transparent; border: 1px solid rgba(158,207,255,0.06); color: var(--muted); }
+
+.side-btn{ border: 2px solid transparent; border-radius:8px; transition: outline .12s ease, transform .12s ease; }
+.side-btn:hover{ transform: translateY(-4px); }
+
+/* Selected styles */
+.selectionbtn.btn-primary{ box-shadow: 0 8px 30px rgba(14,165,233,0.12); }
+.selitemcontainer.selected{ outline: 3px solid rgba(158,207,255,0.06); transform: translateY(-4px); }
+
+#okbtn.btn-primary{ background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); padding: 10px 16px; border-radius: 10px; }
+
+/* Match list */
+.match-list{ display:flex; flex-direction:column; gap:10px; }
+.match-item{ padding:12px; }
+
+/* Popup and blur */
+.blur{ position:fixed; inset:0; background:rgba(2,6,23,0.6); z-index:9998; }
+.popup{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:9999; width:calc(100% - 60px); max-width:980px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:18px; border-radius:12px; box-shadow: 0 30px 80px rgba(2,6,23,0.6); }
+.popup.hidden{ display:none; }
+
+/* Chat indicator tweaks */
+#chatindicator{ display:none; }
+#chatcount{ display:none; }
+
+/* Responsive */
+@media (max-width: 768px){
+  .popup{ width:calc(100% - 20px); }
+  .leftsidebar, .rightsidebar{ display:none; }
+}
