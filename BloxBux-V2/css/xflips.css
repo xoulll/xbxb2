@@ -65,6 +65,14 @@ body{
 #chatindicator{ display:none; }
 #chatcount{ display:none; }
 
+/* SweetAlert2 z-index fix so modals appear above our popups */
+.swal2-container { z-index: 100100 !important; }
+
+/* Posting overlay (covers all UI while posting a match) */
+#postingOverlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(2,6,23,0.6); z-index:100090; }
+#postingOverlay .spinner{ width:96px; height:96px; border-radius:50%; border:10px solid rgba(255,255,255,0.06); border-top-color: var(--accent-1); animation: spin 1s linear infinite; box-shadow: 0 16px 40px rgba(14,165,233,0.12); }
+@keyframes spin{ to { transform: rotate(360deg); } }
+
 /* Responsive */
 @media (max-width: 768px){
   .popup{ width:calc(100% - 20px); }
