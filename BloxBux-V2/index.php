@@ -14,502 +14,110 @@ if (get_included_files()[0] != __FILE__) {
 <?php
 echo "<div class='hidden'>" . uniqid() . "</div>";
 ?>
-<script>
-    function countDown(timestamp,selector) {
-        let x = setInterval(function() {
 
-                    // Get today's date and time
-                    var now = new Date().getTime();
-
-                    // Find the distance between now and the count down date
-                    var distance = timestamp - now;
-
-                    // Time calculations for days, hours, minutes and seconds
-                    var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    var seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-                    // Display the result in the element with id="demo"
-                    TimeRemaining = minutes + "m " + seconds + "s ";
-                    TimeRemaining = "Ends in " + TimeRemaining
-                    $(selector).text(TimeRemaining);
-
-                    // If the count down is finished, write some text
-                    if (distance < 0) {
-                        clearInterval(x);
-                        $(selector).text("Giveaway has Ended")
-                        setTimeout(function () {
-                            $.ajax({
-                                url: "./php/giveaway.php",
-                                type: "POST",
-                                data: {
-                                    type: "check",
-                                }
-                            });
-                        }, Math.floor(Math.random() * 2000));
-                    }
-                }, 1000);
-    }
-</script>
-<div class="section" style="width:calc(100% - 20px);">
-    <?php
-    $giveaways = getActiveGiveaways();
-    $giveaways = $giveaways?$giveaways:[];
-    foreach ($giveaways as $match) :
-        $item_info = getItemInfo($match["item_id"]);
-        $joined = $session ? isJoined($match["giveaway_id"], $session["user_id"]) : false;
-
-        try {
-            $players = $conn->queryPrepared("SELECT COUNT(*) AS players FROM giveaways_participants WHERE giveaway_id = ?",[$match["giveaway_id"]])->fetch_assoc()["players"];
-        }
-
-        //catch exception
-        catch(Exception $e) {
-            $players = 0;
-            sendErrorEmbedWebhook("Problem Getting Joined Players in Giveaway",$e->getMessage());
-        }
-    ?>
-        <div id='giveaway<?php echo $match["giveaway_id"]; ?>' class="row" style="justify-content:space-between;">
-            <img src="<?php echo $item_info["item_image"]; ?>" width="80px" height="80px">
-            <div style="display:flex;flex-direction:column;align-items:center;flex: 0 0 auto;">
-                <span style="font-size:1.5em;font-style:italic;font-weight:bold;"><?php echo $item_info['display_name'] ?></span>
-                <span style="font-size:1.2em;color:gold;margin-top:-0.2em;"><?php echo $item_info['item_value'] ? $item_info['item_value'] . " Value" : "Pending Valuation"; ?></span>
-                <span style="font-size:1.2em;color:lime;margin-top:-0.2em;" class="endtime">Ends in 10 Minutes</span>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:center;flex: 0 0 auto;">
-                <span style="font-size:1.5em;font-style:italic;font-weight:bold;" class='numplayers'><?php echo $players; ?> Joined</span>
-            </div>
-            <button class="btn btn-primary" <?php echo $session?(($joined or $match['winner']) ? "disabled" : "onclick='joinGiveaway($match[giveaway_id])'"):"onclick='login()'"; ?>;><?php echo $match['winner'] ? "Ended" : ($session?($joined ? "Joined" : "Join"):"Log In"); ?></button>
-            <script>
-                countDown(<?php echo strtotime($match['enddate']); ?> * 1000 , "#giveaway<?php echo $match["giveaway_id"]; ?> .endtime");
-            </script>
-        </div>
-    <?php
-    endforeach;
-    ?>
-    <div id='gamesheader' class="row" style="justify-content:space-between;">
-        <div style="display:flex;gap:20px;align-items:center;">
-            <button onclick='<?php echo $session ? "createMatch()" : "login()"; ?>' class="btn-primary">Create Match</button>
-            <?php if ($session) : ?>
-                <h2 style="text-align:center;">Your Profit: <?php echo getAllProfit($session["user_id"]); ?></h2>
-            <?php endif; ?>
-        </div>
-        <div style="display:flex;gap:20px;align-items:center;">
-            <?php if ($session) : ?>
-                <button onclick='toggleMatches()' id='matchbtn' class="btn-secondary">My Matches</button>
-            <?php endif; ?>
-        </div>
-    </div>
-    <?php
-    if ($session) {
-        $matches = getGames($session["user_id"]);
-    } else {
-        $matches = getGames("NULL");
-    }
-    foreach ($matches as $match) :
-    ?>
-        <div id='game<?php echo $match["game_id"]; ?>' class="publicmatch row" style="justify-content:space-between;">
-            <div style="display:flex;flex-direction:column;gap:10px;align-items:center;width:calc(100% - 100px);">
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;width:100%;">
-                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <img src="<?php echo $match["starter_side"] == 0 ? "./img/gem.png" : "./img/dog.png"; ?>" alt="<?php echo $match["starter_side"] == 0 ? "Gem" : "Dog"; ?>" width="32px" height="32px" loading="lazy">
-                        <img class="userthumb" src="<?php echo getUserThumbnail($match["starter_id"]); ?>" width="32px" height="32px" loading="lazy">
-                        <div style="font-size:24px;"><?php echo getName($match["starter_id"]); ?></div>
-                        <?php
-                        foreach (json_decode($match["starter_items"], true) as $item) :
-                        ?>
-                            <img src="<?php echo getItemInfo($item["item_id"])["item_image"] ?>" width="32px" height="32px" loading="lazy">
-                        <?php endforeach; ?>
-                    </div>
-                    <?php if ($match["end_date"]) : ?> <div style="font-size:24px;">Value: <?php echo $match["starter_value"]; ?></div> <?php endif; ?>
-                </div>
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;width:100%;">
-                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <img src="<?php echo $match["starter_side"] == 1 ? "./img/gem.png" : "./img/dog.png"; ?>" alt="<?php echo $match["starter_side"] == 1 ? "Gem" : "Dog"; ?>" width="32px" height="32px" loading="lazy">
-                        <?php if ($match["end_date"]) : ?>
-                            <img class="userthumb" src="<?php echo getUserThumbnail($match["player_id"]); ?>" width="32px" height="32px" loading="lazy">
-                            <div style="font-size:24px;"><?php echo getName($match["player_id"]); ?></div>
-                            <?php
-                            foreach (json_decode($match["player_items"], true) as $item) :
-                            ?>
-                                <img src="<?php echo getItemInfo($item["item_id"])["item_image"] ?>" width="32px" height="32px" loading="lazy">
-                            <?php endforeach; ?>
-                    </div>
-                    <div style="font-size:24px;">Value: <?php echo $match["player_value"]; ?></div>
-                </div>
-            <?php else : ?>
-                <?php if (!$session) : ?>
-                    <button onclick="login()" class="btn-primary">Join Match (<?php echo $match["starter_value"] - 10 ?> - <?php echo $match["starter_value"] + 10 ?>)</button>
-                <?php elseif ($match["starter_id"] != $session["user_id"]) : ?>
-                    <button onclick='joinMatch(<?php echo $match["game_id"] . "," . $match["starter_value"]; ?>)' class="btn-primary">Join Match (<?php echo $match["starter_value"] - 10 ?> - <?php echo $match["starter_value"] + 10 ?>)</button>
-                <?php else : ?>
-                    <button onclick='cancelMatch(<?php echo $match["game_id"]; ?>)' class="btn-primary">Cancel Match</button>
-                <?php endif; ?>
+<div class="coinflip-wrapper">
+    <div class="coin-area">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h1 style="margin:0;">Xflips — Coinflip</h1>
+            <div style="display:flex;gap:12px;align-items:center;">
+                <button onclick='<?php echo $session ? "createMatch()" : "login()"; ?>' class="btn-primary">Create Match</button>
+                <?php if ($session) : ?><button onclick='toggleMatches()' id='matchbtn' class="btn-secondary">My Matches</button><?php endif; ?>
             </div>
         </div>
-    <?php endif; ?>
-</div>
-<div style="display:flex;flex-direction:column;text-align:center;padding-right:10px;">
-    <?php if (!$match["end_date"]) : ?>
-        <h2>Value <br><?php echo $match["starter_value"]; ?></h2>
-        <div style="color:cadetblue">(<?php echo $match["starter_value"] - 10 >= 10 ? $match["starter_value"] - 10 : 10; ?> - <?php echo $match["starter_value"] + 10; ?>)</div>
-    <?php else : ?>
-        <div class="coin <?php echo $match["winner_side"] == 0 ? "red" : "blue"; ?>">
-            <div class='blue'>
-                <img src="./img/dog.png" loading="lazy">
-            </div>
-            <div class='red'>
-                <img src="./img/gem.png" loading="lazy">
-            </div>
-        </div>
-        <img style="border-radius:50%;" class="hidden" src="<?php echo $match["winner_side"] == 0 ? "./img/gem.png" : "./img/dog.png"; ?>" width="80px" height="80px" loading="lazy">
-    <?php endif; ?>
-</div>
-</div>
-<?php endforeach; ?>
-<?php
-if ($session) {
-    $matches = getGames($session["user_id"], true);
-} else {
-    $matches = [];
-}
-foreach ($matches as $match) :
-?>
-    <div id='game<?php echo $match["game_id"]; ?>' class="mymatch row hidden" style="justify-content:space-around;">
-        <div style="display:flex;flex-direction:column;gap:10px;align-items:center;width:calc(100% - 100px);">
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;width:100%;">
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                    <img src="<?php echo $match["starter_side"] == 0 ? "./img/gem.png" : "./img/dog.png"; ?>" alt="<?php echo $match["starter_side"] == 0 ? "Gem" : "Dog"; ?>" width="32px" height="32px" loading="lazy">
-                    <img class="userthumb" src="<?php echo getUserThumbnail($match["starter_id"]); ?>" width="32px" height="32px" loading="lazy">
-                    <div style="font-size:24px;"><?php echo getName($match["starter_id"]); ?></div>
+
+        <div style="margin-top:18px;display:flex;gap:18px;align-items:flex-start;">
+            <div style="flex:1;">
+                <div class="match-list" id="matchList">
                     <?php
-                    foreach (json_decode($match["starter_items"], true) as $item) :
+                    if ($session) {
+                        $matches = getGames($session["user_id"]);
+                    } else {
+                        $matches = getGames("NULL");
+                    }
+                    foreach ($matches as $match) :
                     ?>
-                        <img src="<?php echo getItemInfo($item["item_id"])["item_image"] ?>" width="32px" height="32px" loading="lazy" loading="lazy">
+                        <div id='game<?php echo $match["game_id"]; ?>' class="publicmatch" style="display:flex;justify-content:space-between;align-items:center;padding:12px;margin-bottom:12px;border-radius:10px;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <div style="width:88px;">
+                                    <div class="big-coin">
+                                        <img src="<?php echo $match["winner_side"] == 0 ? './img/gem.png' : './img/dog.png'; ?>" loading="lazy">
+                                    </div>
+                                </div>
+                                <div style="display:flex;flex-direction:column;">
+                                    <div style="font-weight:700;font-size:18px;"><?php echo getName($match["starter_id"]);
+                                    if ($match["player_id"]) { echo " vs " . getName($match["player_id"]); } ?></div>
+                                    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                        <?php foreach (json_decode($match["starter_items"], true) as $item) : ?>
+                                            <img src="<?php echo getItemInfo($item["item_id"])["item_image"]; ?>" width="48" height="48" loading="lazy">
+                                        <?php endforeach; ?>
+                                        <?php if ($match["end_date"]) : foreach (json_decode($match["player_items"], true) as $item) : ?>
+                                            <img src="<?php echo getItemInfo($item["item_id"])["item_image"]; ?>" width="48" height="48" loading="lazy">
+                                        <?php endforeach; endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+                                <?php if (!$match["end_date"]) : ?>
+                                    <?php if (!$session) : ?>
+                                        <button onclick="login()" class="btn-primary">Join Match (<?php echo $match["starter_value"] - 10 ?> - <?php echo $match["starter_value"] + 10 ?>)</button>
+                                    <?php elseif ($match["starter_id"] != $session["user_id"]) : ?>
+                                        <button onclick='joinMatch(<?php echo $match["game_id"] . "," . $match["starter_value"]; ?>)' class="btn-primary">Join Match</button>
+                                    <?php else : ?>
+                                        <button onclick='cancelMatch(<?php echo $match["game_id"]; ?>)' class="btn-secondary">Cancel</button>
+                                    <?php endif; ?>
+                                    <div style="font-size:14px;color:var(--muted);">Value: <?php echo $match["starter_value"]; ?></div>
+                                <?php else : ?>
+                                    <div style="font-weight:700;font-size:18px;">Completed</div>
+                                    <div style="font-size:14px;color:var(--muted);">Winner: <?php echo $match["winner_id"] ? getName($match["winner_id"]) : 'TBD'; ?></div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     <?php endforeach; ?>
                 </div>
-                <?php if ($match["end_date"]) : ?> <div style="font-size:24px;">Value: <?php echo $match["starter_value"]; ?></div> <?php endif; ?>
             </div>
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;width:100%;">
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                    <img src="<?php echo $match["starter_side"] == 1 ? "./img/gem.png" : "./img/dog.png"; ?>" alt="<?php echo $match["starter_side"] == 1 ? "Gem" : "Dog"; ?>" width="32px" height="32px" loading="lazy">
-                    <?php if ($match["end_date"]) : ?>
-                        <img class="userthumb" src="<?php echo getUserThumbnail($match["player_id"]); ?>" width="32px" height="32px" loading="lazy">
-                        <div style="font-size:24px;"><?php echo getName($match["player_id"]); ?></div>
-                        <?php
-                        $player_items = json_decode($match["player_items"], true);
-                        if (!$player_items) {
-                            $player_items = [];
-                        }
-                        foreach ($player_items as $item) :
-                        ?>
-                            <img src="<?php echo getItemInfo($item["item_id"])["item_image"] ?>" width="32px" height="32px" loading="lazy">
-                        <?php endforeach; ?>
+
+            <div class="side-panel">
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div class="player-card">
+                        <img src="<?php echo $session?getUserThumbnail($session["user_id"]):'img/favicon.png'; ?>">
+                        <div>
+                            <div class="player-name"><?php echo $session?getName($session["user_id"]):'Guest'; ?></div>
+                            <div style="font-size:13px;color:var(--muted);">Balance: <?php echo $session?getAllProfit($session["user_id"]):'0'; ?></div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin:6px 0 0 0;">Your Inventory</h3>
+                    <div class="items-grid">
+                        <?php if ($session) :
+                            include_once "php/inventory_handler.php";
+                            $inventory = getInventory($session["user_id"], false);
+                            foreach ($inventory as $item) : ?>
+                                <div id="card<?php echo $item["inventory_id"]; ?>" class="item-card" data-inv="<?php echo $item["inventory_id"]; ?>" data-val="<?php echo $item["item_value"]; ?>">
+                                    <img src="<?php echo $item["item_image"]; ?>" alt="<?php echo htmlspecialchars($item["display_name"]); ?>">
+                                    <div style="font-size:12px;margin-top:6px;"><?php echo $item["item_value"]; ?> Value</div>
+                                    <button class="selectionbtn btn-secondary" style="margin-top:6px;">Select</button>
+                                </div>
+                            <?php endforeach;
+                        else : ?>
+                            <div>Please <button onclick="login()" class="btn-primary">login</button> to use inventory</div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+                        <div>
+                            <div style="color:var(--muted);">Selected Value</div>
+                            <div id="valdiv">Value: 0</div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+                            <div style="display:flex;gap:8px;align-items:center;"><img id="side0" src="./img/gem.png" width="56" height="56" style="cursor:pointer;border-radius:8px;"/><img id="side1" src="./img/dog.png" width="56" height="56" style="cursor:pointer;border-radius:8px;"/></div>
+                            <button id="okbtn" class="btn-primary" data-mode="create" disabled>Create / Post</button>
+                        </div>
+                    </div>
                 </div>
-                <div style="font-size:24px;">Value: <?php echo $match["player_value"]; ?></div>
             </div>
-        <?php else : ?>
-            <?php if (!$session) : ?>
-                <button onclick="login()" class="btn-primary">Join Match (<?php echo $match["starter_value"] - 10 ?> - <?php echo $match["starter_value"] + 10 ?>)</button>
-            <?php elseif ($match["starter_id"] != $session["user_id"]) : ?>
-                <button onclick='joinMatch(<?php echo $match["game_id"] . "," . $match["starter_value"]; ?>)' class="btn-primary">Join Match (<?php echo $match["starter_value"] - 10 ?> - <?php echo $match["starter_value"] + 10 ?>)</button>
-            <?php else : ?>
-                <button onclick='cancelMatch(<?php echo $match["game_id"]; ?>)' class="btn-primary">Cancel Match</button>
-            <?php endif; ?>
         </div>
     </div>
-<?php endif; ?>
 </div>
-<div style="display:flex;flex-direction:column;text-align:center;padding-right:10px;">
-    <?php if (!$match["end_date"]) : ?>
-        <h2>Value <br><?php echo $match["starter_value"]; ?></h2>
-        <div style="color:cadetblue">(<?php echo $match["starter_value"] - 10; ?> - <?php echo $match["starter_value"] + 10; ?>)</div>
-    <?php else : ?>
-        <div class="coin <?php echo $match["winner_side"] == 0 ? "red" : "blue"; ?>">
-            <div class='blue'>
-                <img src="./img/dog.png" loading="lazy">
-            </div>
-            <div class='red'>
-                <img src="./img/gem.png" loading="lazy">
-            </div>
-        </div>
-        <img style="border-radius:50%;" class="hidden" src="<?php echo $match["winner_side"] == 0 ? "./img/gem.png" : "./img/dog.png"; ?>" width="80px" height="80px" loading="lazy">
-    <?php endif; ?>
-</div>
-</div>
-<?php endforeach; ?>
-</div>
-
-<script>
-    value = 0
-    minval = 0
-    maxval = 0
-    items = []
-    publicmatches = true;
-    gamesavail = true;
-
-    function toggleMatches() {
-        $("#matchbtn").text($("#matchbtn").text() == "Active Matches" ? "My Matches" : "Active Matches");
-        $(".publicmatch").toggleClass("hidden");
-        $(".mymatch").toggleClass("hidden");
-        publicmatches = !publicmatches;
-    }
-
-    function cancelMatchOK(game_id) {
-        Swal.fire({
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            allowEnterKey: false
-        })
-        Swal.showLoading()
-        $.ajax({
-            url: "./php/game.php",
-            type: "POST",
-            data: {
-                type: "cancel",
-                game_id: game_id
-            },
-            success: function(data) {
-                data = JSON.parse(data)
-                Swal.close()
-                if (data.Error) {
-                    Swal.fire({
-                        title: "Error",
-                        text: data.Error,
-                        icon: "error",
-                        confirmButtonText: "OK"
-                    })
-                } else {
-                    Swal.fire({
-                        title: 'Cancel Successful',
-                        text: 'Game has been Successfully Cancelled',
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    }).then(function() {
-                        window.location.reload()
-                    })
-                }
-            }
-        });
-    }
-
-    function cancelMatch(game_id) {
-        Swal.fire({
-            title: 'Are you sure?',
-            text: "You are about to cancel this game!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, cancel it!'
-        }).then((result) => {
-            if (result.value) {
-                cancelMatchOK(game_id)
-            }
-        })
-    }
-
-    function createMatchOK(side, items) {
-        Swal.fire({
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            allowEnterKey: false
-        })
-        Swal.showLoading()
-        $.ajax({
-            url: "./php/game.php",
-            type: "POST",
-            data: {
-                type: "create",
-                side: side,
-                item_ids: JSON.stringify(items)
-            },
-            success: function(data) {
-                data = JSON.parse(data)
-                Swal.close()
-                if (data.Error) {
-                    Swal.fire({
-                        title: "Error",
-                        text: data.Error,
-                        icon: "error",
-                        confirmButtonText: "OK"
-                    })
-                } else {
-                    Swal.fire({
-                        title: 'Match Created',
-                        text: 'Game has been Successfully Created',
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    }).then(function() {
-                        window.location.reload()
-                    })
-                }
-            }
-        });
-    }
-
-
-    function joinMatchOK(game_id, items) {
-        Swal.fire({
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            allowEnterKey: false
-        })
-        Swal.showLoading()
-        $.ajax({
-            url: "./php/game.php",
-            type: "POST",
-            data: {
-                type: "play",
-                game_id: game_id,
-                item_ids: JSON.stringify(items)
-            },
-            success: function(data) {
-                data = JSON.parse(data)
-                if (data.Error) {
-                    Swal.close()
-                    Swal.fire({
-                        title: "Error",
-                        text: data.Error,
-                        icon: "error",
-                        confirmButtonText: "OK"
-                    })
-                }
-            }
-        });
-    }
-
-    function joinGiveaway(id) {
-        Swal.fire({
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            allowEnterKey: false
-        })
-        Swal.showLoading()
-        $.ajax({
-            url: "./php/giveaway.php",
-            type: "POST",
-            data: {
-                type: "join",
-                giveaway_id: id,
-            },
-            success: function(data) {
-                data = JSON.parse(data)
-                Swal.close()
-                if (data.Error) {
-                    Swal.fire({
-                        title: "Error",
-                        text: data.Error,
-                        icon: "error",
-                        confirmButtonText: "OK"
-                    })
-                } else {
-                    Swal.fire({
-                        title: 'Match Created',
-                        text: 'You have joined this giveaway!',
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    }).then(function() {
-                        window.location.reload()
-                    })
-                }
-            }
-        });
-    }
-
-    function createMatch() {
-        value = 0
-        minval = 10
-        maxval = 0
-        items = []
-        togglePopup('selitem')
-        $("#valheader").text("(Value must be greater than 10)")
-        $("#valdiv").text("Value: 0")
-        $("#okbtn").attr("onclick", "createMatchside()")
-        $("#okbtn").text("Choose Side")
-        $("#okbtn").attr("disabled", true)
-        $(".selectionbtn").each(function() {
-            $(this).removeClass("btn-primary")
-            $(this).addClass("btn-secondary")
-            $(this).text("Select")
-        })
-    }
-
-    function joinMatch(game_id, val) {
-        value = 0
-        minval = val - 10
-        if (minval < 10) {
-            minval = 10;
-        }
-        maxval = val + 10
-        items = []
-        togglePopup('selitem')
-        $("#valheader").text("(Value must be between " + minval + " and " + maxval + ")")
-        $("#valdiv").text("Value: 0")
-        $("#okbtn").attr("onclick", "joinMatchconf(" + game_id + ")")
-        $("#okbtn").text("Join Match")
-        $("#okbtn").attr("disabled", true)
-        $(".selectionbtn").each(function() {
-            $(this).removeClass("btn-primary")
-            $(this).addClass("btn-secondary")
-            $(this).text("Select")
-        })
-    }
-
-    function joinMatchconf(game_id) {
-        togglePopup('selitem')
-        Swal.fire({
-            title: 'Are you sure?',
-            text: "You are about to join this game!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, join it!'
-        }).then((result) => {
-            if (result.value) {
-                joinMatchOK(game_id, items)
-            }
-        })
-    }
-
-    function addItem(invid, val) {
-        if (items.includes(invid)) {
-            items.splice(items.indexOf(invid), 1)
-            value = value - val
-            $("#item" + invid + " .selectionbtn").each(function() {
-                $(this).removeClass("btn-primary")
-                $(this).addClass("btn-secondary")
-                $(this).text("Select")
-            })
-        } else {
-            if (items.length >= <?php echo $maxGameItems ?>) {
-                Swal.fire("Error", "You can bet maximum of <?php echo $maxGameItems ?> items!", "error")
-                return;
-            }
-            items.push(invid)
-            value = value + val
-            $("#item" + invid + " .selectionbtn").each(function() {
-                $(this).removeClass("btn-secondary")
-                $(this).addClass("btn-primary")
-                $(this).text("Unselect")
-            })
-        }
-        $("#valdiv").text("Value: " + value)
-        if ((value >= minval || minval == 0) && (value <= maxval || maxval == 0)) {
-            $("#okbtn").attr("disabled", false)
-        } else {
-            $("#okbtn").attr("disabled", true)
-        }
-    }
-
-    function createMatchside() {
-        togglePopup('selitem')
-        Swal.fire({
-            title: 'Choose a Side',
-            html: `<div style='display:flex;justify-content:space-around;flex-wrap:wrap;gap:10px;'>
-                    <button onclick='createMatchOK(0,items)' class="btn-primary"><img src='./img/gem.png' width='100px' height='100px'>Red</button>
-                    <button onclick='createMatchOK(1,items)' class="btn-primary"><img src='./img/dog.png' width='100px' height='100px'>Blue</button>
-                </div>`,
-            showCancelButton: true,
-            showConfirmButton: false,
-        })
-    }
-</script>
 
 <?php include "layout/foot.php"; ?>
