@@ -1,80 +1,55 @@
-/* Xflips theme - blue/black modern styles
-   Places: BloxBux-V2 pages (included from layout/head.php)
-   Keeps styles minimal and safe; intended to complement existing css/style.css
+/* AmpDuel-inspired Xflips styles
+   Focused on coinflip area, popup, overlay, and modern blue/black theme.
 */
 :root{
-  --bg-0: #040710;
+  --bg-0: #050814;
   --bg-1: #071428;
-  --card-bg: rgba(255,255,255,0.03);
-  --accent-1: #0ea5e9; /* cyan */
-  --accent-2: #1e3a8a; /* deep blue */
+  --card: #071830cc;
+  --accent: #0ea5e9;
+  --accent-2: #1e3a8a;
   --muted: #9ecfff;
+  --glass: rgba(255,255,255,0.03);
+  --glass-2: rgba(255,255,255,0.02);
   --text: #dbeeff;
 }
 
-body{
-  background: linear-gradient(180deg,var(--bg-0) 0%, var(--bg-1) 100%);
-  color: var(--text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-}
+body{ font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background: linear-gradient(180deg,var(--bg-0),var(--bg-1)); color:var(--text); }
 
-.header, header{
-  background: linear-gradient(90deg, rgba(11,18,32,0.6), rgba(10,25,45,0.6));
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-}
+/* coinflip container */
+.coinflip-wrapper{ max-width:1200px; margin:24px auto; padding:20px; display:flex; gap:20px; align-items:flex-start; }
 
-.logo img{ max-height:40px; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.6)); }
+.coin-area{ flex:1; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:12px; padding:18px; box-shadow: 0 20px 60px rgba(2,6,23,0.6); border:1px solid rgba(158,207,255,0.04); }
 
-.main, .widthcontainer, .section{
-  background: transparent;
-}
+.side-panel{ width:320px; background:var(--card); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; }
 
-/* Cards */
-.selitemcontainer, .match-item, .publicmatch, .mymatch{
-  background: var(--card-bg);
-  border: 1px solid rgba(158,207,255,0.04);
-  padding: 10px;
-  border-radius: 10px;
-}
+.players-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.player-card{ display:flex; align-items:center; gap:12px; background:var(--glass); padding:10px; border-radius:10px; }
+.player-card img{ border-radius:50%; width:56px; height:56px; }
+.player-name{ font-weight:600; color:var(--text); }
 
-.selitemcontainer img{ border-radius:6px; transition: transform .12s ease, box-shadow .12s ease; }
-.selitemcontainer:hover img{ transform: translateY(-4px); box-shadow: 0 12px 30px rgba(2,6,23,0.6); }
+/* big coin visual */
+.big-coin{ width:260px; height:260px; border-radius:50%; background: radial-gradient(circle at 30% 30%, rgba(14,165,233,0.12), rgba(30,58,138,0.12)); display:flex; align-items:center; justify-content:center; margin:0 auto; box-shadow: inset 0 -10px 30px rgba(0,0,0,0.6), 0 24px 80px rgba(2,6,23,0.6); border:8px solid rgba(255,255,255,0.03); }
+.big-coin img{ width:140px; height:140px; }
 
-.selectionbtn.btn-primary{ background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); border: none; color: #fff; }
-.selectionbtn.btn-secondary{ background: transparent; border: 1px solid rgba(158,207,255,0.06); color: var(--muted); }
+/* selection grid */
+.items-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; }
+.item-card{ background:var(--glass-2); border-radius:8px; padding:8px; text-align:center; cursor:pointer; border:1px solid rgba(158,207,255,0.03); }
+.item-card.selected{ outline:3px solid rgba(14,165,233,0.16); transform:translateY(-6px); box-shadow: 0 20px 50px rgba(14,165,233,0.06); }
+.item-card img{ width:72px; height:72px; }
 
-.side-btn{ border: 2px solid transparent; border-radius:8px; transition: outline .12s ease, transform .12s ease; }
-.side-btn:hover{ transform: translateY(-4px); }
+/* popup */
+.popup{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:1200; width:92%; max-width:980px; background: linear-gradient(180deg, rgba(7,24,40,0.95), rgba(4,8,16,0.95)); border-radius:12px; padding:18px; border:1px solid rgba(158,207,255,0.04); }
+.blur{ position:fixed; inset:0; background:rgba(2,6,23,0.6); z-index:1199; }
 
-/* Selected styles */
-.selectionbtn.btn-primary{ box-shadow: 0 8px 30px rgba(14,165,233,0.12); }
-.selitemcontainer.selected{ outline: 3px solid rgba(158,207,255,0.06); transform: translateY(-4px); }
-
-#okbtn.btn-primary{ background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); padding: 10px 16px; border-radius: 10px; }
-
-/* Match list */
-.match-list{ display:flex; flex-direction:column; gap:10px; }
-.match-item{ padding:12px; }
-
-/* Popup and blur */
-.blur{ position:fixed; inset:0; background:rgba(2,6,23,0.6); z-index:9998; }
-.popup{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:9999; width:calc(100% - 60px); max-width:980px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:18px; border-radius:12px; box-shadow: 0 30px 80px rgba(2,6,23,0.6); }
-.popup.hidden{ display:none; }
-
-/* Chat indicator tweaks */
-#chatindicator{ display:none; }
-#chatcount{ display:none; }
-
-/* SweetAlert2 z-index fix so modals appear above our popups */
-.swal2-container { z-index: 100100 !important; }
-
-/* Posting overlay (covers all UI while posting a match) */
-#postingOverlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(2,6,23,0.6); z-index:100090; }
-#postingOverlay .spinner{ width:96px; height:96px; border-radius:50%; border:10px solid rgba(255,255,255,0.06); border-top-color: var(--accent-1); animation: spin 1s linear infinite; box-shadow: 0 16px 40px rgba(14,165,233,0.12); }
+/* posting overlay */
+#postingOverlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(2,6,23,0.7); z-index:1300; }
+#postingOverlay .box{ text-align:center; color:var(--text); }
+#postingOverlay .spinner{ width:96px; height:96px; border-radius:50%; border:10px solid rgba(255,255,255,0.06); border-top-color:var(--accent); animation: spin 1s linear infinite; }
 @keyframes spin{ to { transform: rotate(360deg); } }
 
-/* Responsive */
-@media (max-width: 768px){
-  .popup{ width:calc(100% - 20px); }
-  .leftsidebar, .rightsidebar{ display:none; }
-}
+/* controls */
+.btn-primary{ background: linear-gradient(90deg,var(--accent),var(--accent-2)); color:#fff; border:none; padding:8px 12px; border-radius:8px; }
+.btn-secondary{ background:transparent; color:var(--muted); border:1px solid rgba(158,207,255,0.06); }
+
+/* responsive */
+@media (max-width: 900px){ .coinflip-wrapper{ flex-direction:column; } .side-panel{ width:100%; } .items-grid{ grid-template-columns: repeat(3,1fr);} }
