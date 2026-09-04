@@ -49,10 +49,10 @@ class MySQLConn extends \mysqli
 
 
 //Database Credentials
-$db_host = "sql5.freesqldatabase.com";
-$db_user = "sql5794259";
-$db_pass = "XfNfi4F8gl";
-$db_name = "sql5794259"; //Set to "" if you want to use a default database (if set)
+$db_host = "mysql.railway.internal";
+$db_user = "root";
+$db_pass = "VelGYNGGSUYHwryGkRMGwncdrEFNLrYH";
+$db_name = "railway"; //Set to "" if you want to use a default database (if set)
 $db_port = 3306; //Set to NULL if you want to use default port
 
 //Connect To MySQL Database
