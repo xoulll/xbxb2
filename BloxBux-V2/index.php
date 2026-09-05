@@ -1,9 +1,9 @@
 <?php
     // Start session and load configs
     session_start();
-    include_once "php/config.php";
-    include_once "php/functions.php";
-    include_once "php/inventory_handler.php";
+   include_once dirname(__FILE__) . "/php/config.php";
+include_once dirname(__FILE__) . "/php/functions.php";
+include_once dirname(__FILE__) . "/php/inventory_handler.php";
     
     $session = isset($_SESSION['user_id']) ? array(
         'user_id' => $_SESSION['user_id'],
