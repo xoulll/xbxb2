@@ -45,16 +45,7 @@ function getInventory($user_id, $showlocked = true)
     return $inventory;
 }
 
-//Get Item Info from Item ID
-function getItemInfo($item_id)
-{
-    global $conn;
-    $result = $conn->queryPrepared("SELECT * FROM item_dictionary WHERE item_id = ?", [$item_id]);
-    if ($result) {
-        return $result->fetch_assoc();
-    }
-    return false;
-}
+
 
 function getInventoryItem($inventory_id)
 {
